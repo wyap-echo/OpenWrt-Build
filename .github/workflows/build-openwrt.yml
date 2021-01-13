@@ -28,8 +28,8 @@ env:
   DIY_P2_SH: diy-part2.sh
   UPLOAD_BIN_DIR: false
   UPLOAD_FIRMWARE: true
-  UPLOAD_COWTRANSFER: false
-  UPLOAD_WETRANSFER: true
+  UPLOAD_COWTRANSFER: true
+  UPLOAD_WETRANSFER: false
   UPLOAD_RELEASE: false
   TZ: Asia/Shanghai
 
@@ -81,6 +81,24 @@ jobs:
         chmod +x $DIY_P2_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
+        
+    - name: Install Extra Packages
+      run: |
+          cd openwrt/package
+          git clone https://github.com/fw876/helloworld
+          mv helloworld/* .
+          rm -rf helloworld/
+          rm -rf lean/luci-theme-argon
+          
+          git clone -b 18.06 https://github.com/jerrykuku/luci-theme-argon.git
+          
+          git clone https://github.com/songchenwen/nanopi-r2s
+          mv nanopi-r2s/luci-app-r2sflasher/ .
+          rm -rf nanopi-r2s/
+          
+          git clone https://github.com/jerrykuku/luci-app-jd-dailybonus.git
+          git clone https://github.com/NateLol/luci-app-oled
+          git clone https://github.com/lisaac/luci-app-dockerman
 
     - name: SSH connection to Actions
       uses: P3TERX/ssh2actions@v1.0.0
