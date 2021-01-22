@@ -78,6 +78,7 @@ jobs:
       run: |
           cd openwrt/package
           rm -rf lean/luci-theme-argon
+          git clone -b 18.06 https://github.com/jerrykuku/luci-theme-argon.git
           
           git clone https://github.com/songchenwen/nanopi-r2s
           mv nanopi-r2s/luci-app-r2sflasher/ .
@@ -86,6 +87,7 @@ jobs:
           git clone https://github.com/NateLol/luci-app-oled
           git clone https://github.com/lisaac/luci-app-dockerman
           git clone https://github.com/tty228/luci-app-serverchan.git
+          git clone https://github.com/jerrykuku/luci-app-ttnode.git
           
     - name: Load custom configuration
       run: |
