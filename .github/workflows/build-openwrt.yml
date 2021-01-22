@@ -85,7 +85,6 @@ jobs:
           
           git clone https://github.com/NateLol/luci-app-oled
           git clone https://github.com/lisaac/luci-app-dockerman
-          git clone https://github.com/destan19/OpenAppFilter.git
           git clone https://github.com/tty228/luci-app-serverchan.git
           
     - name: Load custom configuration
