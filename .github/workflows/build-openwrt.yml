@@ -78,7 +78,6 @@ jobs:
       run: |
           cd openwrt/package
           rm -rf lean/luci-theme-argon
-          rm -rf lean/luci-app-jd-dailybonus
           
           git clone https://github.com/songchenwen/nanopi-r2s
           mv nanopi-r2s/luci-app-r2sflasher/ .
