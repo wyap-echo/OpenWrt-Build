@@ -17,4 +17,4 @@
 sed -i 's/OpenWrt/FriendlyWRT/g' package/base-files/files/bin/config_generate
 
 #修改默认主题为argon
-#sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' ./feeds/luci/collections/luci/Makefile
+sed -i 's/luci-theme-bootstrap/luci-theme-argonv3/g' ./feeds/luci/collections/luci/Makefile
