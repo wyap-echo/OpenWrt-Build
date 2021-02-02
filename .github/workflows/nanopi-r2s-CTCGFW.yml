@@ -79,10 +79,6 @@ jobs:
           cd openwrt
           patch -p1 < "${GITHUB_WORKSPACE}/patches/1806-modify_for_r2s.patch"
           
-          cd openwrt/package/lean/default-settings/files
-          rm -rf zzz-default-settings
-          cp -f "${GITHUB_WORKSPACE}/patches/zzz-default-settings"
-          
     - name: Load custom configuration
       run: |
         [ -e files ] && mv files openwrt/files
