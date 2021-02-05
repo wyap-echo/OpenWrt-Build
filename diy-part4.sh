@@ -14,10 +14,10 @@
 #sed -i 's/192.168.1.1/192.168.2.1/g' package/base-files/files/bin/config_generate
 
 #更改主机名
-sed -i 's/OpenWrt/FriendlyWRT/g' package/base-files/files/bin/config_generate
+sed -i 's/OpenWrt/NanoPi-R2S/g' package/base-files/files/bin/config_generate
 
 #修改默认主题为argon
 sed -i 's/luci-theme-bootstrap/luci-theme-argonv3/g' ./feeds/luci/collections/luci/Makefile
 
 #添加编译信息
-sed -i 's/CTCGFW/CTCGFW | Build by WYAP/g' package/lean/default-settings/files/zzz-default-settings
+#sed -i 's/CTCGFW/CTCGFW | Build by WYAP/g' package/lean/default-settings/files/zzz-default-settings
