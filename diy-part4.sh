@@ -20,4 +20,4 @@ sed -i 's/OpenWrt/FriendlyWRT/g' package/base-files/files/bin/config_generate
 sed -i 's/luci-theme-bootstrap/luci-theme-argonv3/g' ./feeds/luci/collections/luci/Makefile
 
 #添加编译信息
-sed -i 's/CTCGFW/CTCGFW| Build by WYAP/g' package/lean/default-settings/files/zzz-default-settings
+sed -i 's/CTCGFW/CTCGFW | Build by WYAP/g' package/lean/default-settings/files/zzz-default-settings
