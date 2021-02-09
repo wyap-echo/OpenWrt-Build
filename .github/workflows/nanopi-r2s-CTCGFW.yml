@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Build CTCGFW-OpenWrt
+name: Build CTCGFW-r2s-OpenWrt
 
 on:
   repository_dispatch:
