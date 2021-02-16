@@ -77,9 +77,10 @@ jobs:
     - name: Install Extra Packages
       run: |
           cd openwrt/package
-          rm -rf lean/luci-theme-argon
-          
           git clone https://github.com/lisaac/luci-app-dockerman
+          cd
+          cd openwrt/package/network/services
+          https://github.com/linkease/ddnsto-openwrt.git
           
     - name: Load custom configuration
       run: |
