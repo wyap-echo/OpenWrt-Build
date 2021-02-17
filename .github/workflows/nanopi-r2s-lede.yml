@@ -78,8 +78,7 @@ jobs:
       run: |
           cd openwrt/package
           git clone https://github.com/lisaac/luci-app-dockerman
-          cd
-          cd openwrt/package/network/services
+          cd network/services
           git clone https://github.com/linkease/ddnsto-openwrt.git
           
     - name: Load custom configuration
