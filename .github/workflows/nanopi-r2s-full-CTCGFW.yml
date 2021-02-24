@@ -86,6 +86,8 @@ jobs:
         chmod +x $DIY_P2_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
+        ../$DIY_SH
+        ../scripts/preset-terminal-tools.sh
 
     - name: SSH connection to Actions
       uses: P3TERX/ssh2actions@v1.0.0
@@ -113,10 +115,28 @@ jobs:
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
-
+        
+    - name: Generate Firmware
+      run: |
+        cd data/opkg
+        sed -i "s/subtarget/$SUBTARGET/g" distfeeds.conf
+        sed -i "s/target\//$TARGET\//g" distfeeds.conf
+        sed -i "s/platform/$PLATFORM/g" distfeeds.conf
+        sed -i "s/date/$(date +'%Y-%m-%d')/g" distfeeds.conf
+        cd openwrt
+        mkdir -p files/etc/opkg
+        cp ../data/opkg/distfeeds.conf files/etc/opkg/distfeeds.conf
+        mkdir -p files/etc/uci-defaults/
+        cp ../scripts/init-settings.sh files/etc/uci-defaults/99-init-settings
+        mkdir -p files/bin
+        cp ../scripts/ipv6-helper.sh files/bin/ipv6-helper
+        make package/install -j$(nproc) || make package/install -j1 V=s
+        make target/install -j$(nproc) || make target/install -j1 V=s
+        make checksum
+  
     - name: Check space usage
       if: (!cancelled())
-      run: df -hT
+      run: df -hT 
 
     - name: Upload bin directory
       uses: actions/upload-artifact@main
