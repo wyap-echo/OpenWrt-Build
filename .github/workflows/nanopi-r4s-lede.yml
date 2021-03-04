@@ -77,7 +77,7 @@ jobs:
     - name: Install patch
       run: |
           cd openwrt
-          patch -p1 < "${GITHUB_WORKSPACE}/patches/1806-modify_for_r4s.patch"
+          patch -p1 < "${GITHUB_WORKSPACE}/patches/1806-modify_for_lede_r4s.patch"
 
     - name: Install Extra Packages
       run: |
