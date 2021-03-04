@@ -14,7 +14,7 @@
 #sed -i 's/192.168.1.1/192.168.2.1/g' package/base-files/files/bin/config_generate
 
 #修改内核为4.19
-sed -i 's/KERNEL_PATCHVER:=5.4/KERNEL_PATCHVER:=4.19/g' ./target/linux/armvirt/Makefile
+#sed -i 's/KERNEL_PATCHVER:=5.4/KERNEL_PATCHVER:=4.19/g' ./target/linux/armvirt/Makefile
 
 #更改主机名
 #sed -i 's/OpenWrt/FriendlyWRT/g' package/base-files/files/bin/config_generate
