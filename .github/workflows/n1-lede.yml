@@ -74,6 +74,13 @@ jobs:
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
 
+    - name: Install Extra Packages
+      run: |
+          cd openwrt/package
+          svn co https://github.com/linkease/ddnsto-openwrt/trunk/luci-app-ddnsto
+          cd network/services
+          svn co https://github.com/linkease/ddnsto-openwrt/trunk/ddnsto
+
     - name: Load custom configuration
       run: |
         [ -e files ] && mv files openwrt/files
