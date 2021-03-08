@@ -74,17 +74,13 @@ jobs:
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
 
-    - name: Install patch
-      run: |
-          cd openwrt
-          patch -p1 < "${GITHUB_WORKSPACE}/patches/1806-modify_for_lede_r4s.patch"
-
     - name: Install Extra Packages
       run: |
           cd openwrt/package
-          git clone https://github.com/lisaac/luci-app-dockerman
+          svn co https://github.com/lisaac/luci-app-dockerman/trunk/applications/luci-app-dockerman
+          svn co https://github.com/linkease/ddnsto-openwrt/trunk/luci-app-ddnsto
           cd network/services
-          git clone https://github.com/linkease/ddnsto-openwrt.git
+          svn co https://github.com/linkease/ddnsto-openwrt/trunk/ddnsto
           
     - name: Load custom configuration
       run: |
