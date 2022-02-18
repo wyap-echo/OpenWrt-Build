@@ -23,8 +23,8 @@
 #sed -i 's/luci-theme-bootstrap/luci-theme-argon-18.06/g' ./feeds/luci/collections/luci/Makefile
 
 # cpufreq
-sed -i 's/LUCI_DEPENDS.*/LUCI_DEPENDS:=\@\(arm\|\|aarch64\)/g' ./lede/package/feeds/luci/luci-app-cpufreq/Makefile
-sed -i 's/services/system/g' ./lede/package/feeds/luci/luci-app-cpufreq/luasrc/controller/cpufreq.lua
+sed -i 's/LUCI_DEPENDS.*/LUCI_DEPENDS:=\@\(arm\|\|aarch64\)/g' package/feeds/luci/luci-app-cpufreq/Makefile
+sed -i 's/services/system/g' package/feeds/luci/luci-app-cpufreq/luasrc/controller/cpufreq.lua
 
 # cpufreq
 #sed -i 's/LUCI_DEPENDS.*/LUCI_DEPENDS:=\@\(arm\|\|aarch64\)/g' package/lean/luci-app-cpufreq/Makefile
