@@ -22,4 +22,7 @@
 #修改默认主题为argon
 #sed -i 's/luci-theme-bootstrap/luci-theme-argon-18.06/g' ./feeds/luci/collections/luci/Makefile
 
+# cpufreq
+sed -i 's/LUCI_DEPENDS.*/LUCI_DEPENDS:=\@\(arm\|\|aarch64\)/g' lede/feeds/luci/applications/luci-app-cpufreq/Makefile
+sed -i 's/services/system/g' lede/feeds/luci/applications/luci-app-cpufreq/luasrc/controller/cpufreq.lua
 
