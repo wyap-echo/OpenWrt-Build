@@ -23,7 +23,7 @@ env:
   REPO_URL: https://github.com/coolsnowwolf/openwrt
   REPO_BRANCH: lede-17.01
   FEEDS_CONF: feeds.conf.default
-  CONFIG_FILE: configs/n1.oldversion.config
+  CONFIG_FILE: configs/youku_yk1.config
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
   UPLOAD_BIN_DIR: true
@@ -61,26 +61,11 @@ jobs:
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    - name: Load custom feeds
-      run: |
-        [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
-        chmod +x $DIY_P1_SH
-        cd openwrt
-        $GITHUB_WORKSPACE/$DIY_P1_SH
-
     - name: Update feeds
       run: cd openwrt && ./scripts/feeds update -a
 
     - name: Install feeds
       run: cd openwrt && ./scripts/feeds install -a
-
-    - name: Install Extra Packages
-      run: |
-          cd openwrt/package/feeds
-          svn co https://github.com/lisaac/luci-app-dockerman/trunk/applications/luci-app-dockerman
-#          cd ..
-#          cd network/services
-#          svn co https://github.com/linkease/nas-packages/trunk/network/services/ddnsto
           
     - name: Load custom configuration
       run: |
