@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Build n1-OpenWrt-oldversion
+name: Build youku_yk1-OpenWrt-oldversion
 
 on:
   repository_dispatch:
