@@ -23,9 +23,22 @@
 #sed -i 's/luci-theme-bootstrap/luci-theme-argon-18.06/g' ./feeds/luci/collections/luci/Makefile
 
 # cpufreq
-sed -i 's/LUCI_DEPENDS.*/LUCI_DEPENDS:=\@\(arm\|\|aarch64\)/g' package/feeds/luci/luci-app-cpufreq/Makefile
-sed -i 's/services/system/g' package/feeds/luci/luci-app-cpufreq/luasrc/controller/cpufreq.lua
+#sed -i 's/LUCI_DEPENDS.*/LUCI_DEPENDS:=\@\(arm\|\|aarch64\)/g' package/feeds/luci/luci-app-cpufreq/Makefile
+#sed -i 's/services/system/g' package/feeds/luci/luci-app-cpufreq/luasrc/controller/cpufreq.lua
 
 # autocore
-sed -i 's/DEPENDS:=@(TARGET_bcm27xx||TARGET_bcm53xx||TARGET_ipq40xx||TARGET_ipq806x||TARGET_ipq807x||TARGET_mvebu||TARGET_rockchip)/DEPENDS:=@(TARGET_bcm27xx||TARGET_bcm53xx||TARGET_ipq40xx||TARGET_ipq806x||TARGET_ipq807x||TARGET_mvebu||TARGET_rockchip||TARGET_armvirt)/g' package/lean/autocore/Makefile
+#sed -i 's/DEPENDS:=@(TARGET_bcm27xx||TARGET_bcm53xx||TARGET_ipq40xx||TARGET_ipq806x||TARGET_ipq807x||TARGET_mvebu||TARGET_rockchip)/DEPENDS:=@(TARGET_bcm27xx||TARGET_bcm53xx||TARGET_ipq40xx||TARGET_ipq806x||TARGET_ipq807x||TARGET_mvebu||TARGET_rockchip||TARGET_armvirt)/g' package/lean/autocore/Makefile
 
+#添加额外软件包
+mkdir -p package/helloworld
+for i in "dns2socks" "microsocks" "ipt2socks" "pdnsd-alt" "redsocks2"; do \
+  svn checkout "https://github.com/immortalwrt/packages/trunk/net/$i" "package/helloworld/$i"; \
+done
+
+svn checkout https://github.com/coolsnowwolf/lede/trunk/tools/ucl tools/ucl
+svn checkout https://github.com/coolsnowwolf/lede/trunk/tools/upx tools/upx
+
+sed -i '/tools-y += ucl upx/d' tools/Makefile
+sed -i '/# subdirectories to descend into/a\tools-y += ucl upx' tools/Makefile
+sed -i "/\$(curdir)\/upx\/compile := \$(curdir)\/ucl\/compile/d" tools/Makefile
+sed -i '/# builddir dependencies/a\$(curdir)/upx/compile := $(curdir)/ucl/compile' tools/Makefile
