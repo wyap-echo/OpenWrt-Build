@@ -79,6 +79,9 @@ jobs:
           cd openwrt/package/lean
           git clone https://github.com/thinktip/luci-theme-neobird.git
           cd ..
+          cd openwrt/package/feeds
+          svn co https://github.com/lisaac/luci-app-dockerman/trunk/applications/luci-app-dockerman
+          cd ..
 #          cd network/services
 #          svn co https://github.com/linkease/nas-packages/trunk/network/services/ddnsto
           
