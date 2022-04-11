@@ -29,6 +29,9 @@ sed -i 's/services/system/g' package/feeds/luci/luci-app-cpufreq/luasrc/controll
 # autocore
 sed -i 's/DEPENDS:=@(TARGET_bcm27xx||TARGET_bcm53xx||TARGET_ipq40xx||TARGET_ipq806x||TARGET_ipq807x||TARGET_mvebu||TARGET_rockchip)/DEPENDS:=@(TARGET_bcm27xx||TARGET_bcm53xx||TARGET_ipq40xx||TARGET_ipq806x||TARGET_ipq807x||TARGET_mvebu||TARGET_rockchip||TARGET_armvirt)/g' package/lean/autocore/Makefile
 
+#删除无用feed
+sed -i '10,13d' feeds.conf.default
+
 #添加额外软件包
 #mkdir -p package/helloworld
 #for i in "dns2socks" "microsocks" "ipt2socks" "pdnsd-alt" "redsocks2"; do \
