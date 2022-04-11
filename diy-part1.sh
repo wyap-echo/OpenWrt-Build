@@ -16,7 +16,6 @@
 # Add a feed source
 sed -i '$a src-git helloworld https://github.com/fw876/helloworld' feeds.conf.default
 sed -i '$a src-git jerryk https://github.com/jerrykuku/openwrt-package' feeds.conf.default
-# sed -i '$a src-git thinktip https://github.com/thinktip/luci-theme-neobird.git' feeds.conf.default
 sed -i '$a src-git nezha https://github.com/Erope/openwrt_nezha' feeds.conf.default
 sed -i '$a src-git nas https://github.com/linkease/nas-packages.git;master' feeds.conf.default
 sed -i '$a src-git nas_luci https://github.com/linkease/nas-packages-luci.git;main' feeds.conf.default
