@@ -78,8 +78,8 @@ jobs:
       run: |
           cd openwrt/package/lean
           git clone https://github.com/thinktip/luci-theme-neobird.git
-          svn co https://github.com/lisaac/luci-app-dockerman/trunk/applications/luci-app-dockerman
-          cd ..
+#          svn co https://github.com/lisaac/luci-app-dockerman/trunk/applications/luci-app-dockerman
+#          cd ..
 #          cd openwrt/package/feeds
 
 #          cd ..
