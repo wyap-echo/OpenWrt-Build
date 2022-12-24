@@ -17,7 +17,8 @@ sed -i 's/192.168.1.1/192.168.3.1/g' package/base-files/files/bin/config_generat
 #sed -i 's/KERNEL_PATCHVER:=5.4/KERNEL_PATCHVER:=4.19/g' ./target/linux/armvirt/Makefile
 
 #替换PKG版本
-sed -i 's/PKG_VERSION:=/PKG_VERSION:=bbf588/g' ./package/mtk/drivers/conninfra/Makefile
+sed -i 's/PKG_VERSION:=/PKG_VERSION:=bbf588/g' package/mtk/drivers/connectivity/conninfra/Makefile
+sed -i '25i\PKG_CONFIG_DEPENDS:=$(foreach c, $(PKG_KCONFIG),$(if $(CONFIG_$c),CONFIG_$(c)))' package/mtk/drivers/connectivity/conninfra/Makefile
 
 #更改主机名
 #sed -i 's/OpenWrt/FriendlyWRT/g' package/base-files/files/bin/config_generate
