@@ -17,8 +17,8 @@ sed -i 's/192.168.1.1/192.168.2.1/g' package/base-files/files/bin/config_generat
 #sed -i 's/KERNEL_PATCHVER:=5.4/KERNEL_PATCHVER:=4.19/g' ./target/linux/armvirt/Makefile
 
 #去除ipv6依赖
-sed -i 's/DEPENDS:=+libubox +libubus +libuci +libip4tc +IPV6:libip6tc +libxtables +kmod-ipt-core +kmod-ipt-conntrack +IPV6:kmod-nf-conntrack6 +kmod-ipt-nat +iptables-mod-fullconenat/DEPENDS:=+libubox +libubus +libuci +libip4tc +libxtables +kmod-ipt-core +kmod-ipt-conntrack +kmod-ipt-nat +iptables-mod-fullconenat/g' package/network/config/firewall/Makefile
-sed -i 's/DEPENDS+= +kmod-ipt-core +libip4tc +IPV6:libip6tc +libxtables/DEPENDS+= +kmod-ipt-core +libip4tc +libxtables/g' package/network/utils/iptables/Makefile
+#sed -i 's/DEPENDS:=+libubox +libubus +libuci +libip4tc +IPV6:libip6tc +libxtables +kmod-ipt-core +kmod-ipt-conntrack +IPV6:kmod-nf-conntrack6 +kmod-ipt-nat +iptables-mod-fullconenat/DEPENDS:=+libubox +libubus +libuci +libip4tc +libxtables +kmod-ipt-core +kmod-ipt-conntrack +kmod-ipt-nat +iptables-mod-fullconenat/g' package/network/config/firewall/Makefile
+#sed -i 's/DEPENDS+= +kmod-ipt-core +libip4tc +IPV6:libip6tc +libxtables/DEPENDS+= +kmod-ipt-core +libip4tc +libxtables/g' package/network/utils/iptables/Makefile
 
 #替换PKG版本
 #sed -i 's/PKG_VERSION:=/PKG_VERSION:=bbf588/g' package/mtk/drivers/connectivity/conninfra/Makefile
