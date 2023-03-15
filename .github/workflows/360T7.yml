@@ -80,6 +80,7 @@ jobs:
           cd openwrt
           rm -rf feeds/packages/net/miniupnpd
           svn co https://github.com/immortalwrt/packages/branches/openwrt-18.06/net/miniupnpd feeds/packages/net/miniupnpd
+          git clone https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic.git
 
     - name: Load custom configuration
       run: |
