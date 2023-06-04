@@ -80,7 +80,7 @@ jobs:
           cd openwrt
           rm -rf feeds/packages/net/miniupnpd
           svn co https://github.com/immortalwrt/packages/branches/openwrt-18.06/net/miniupnpd feeds/packages/net/miniupnpd
-          git clone https://github.com/gngpp/luci-theme-design.git  package/luci-theme-design
+          git clone -b js --single-branch https://github.com/gngpp/luci-theme-design.git  package/luci-theme-design
 
     - name: Load custom configuration
       run: |
