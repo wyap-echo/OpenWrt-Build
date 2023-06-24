@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Build immortalwrt-360t7
+name: Build immortalwrt-360t7-ubootmod
 
 on:
   repository_dispatch:
