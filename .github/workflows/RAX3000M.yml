@@ -139,7 +139,7 @@ jobs:
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        name: 360 T7-hanwckf-OpenWrt
+        name: RAX3000M-hanwckf-OpenWrt
         path: ${{ env.FIRMWARE }}
 
     - name: Upload firmware to cowtransfer
