@@ -62,7 +62,9 @@ jobs:
           rsync
 
         # 初始化 ImmortalWrt 编译环境
-        sudo bash <(curl -sL https://build-scripts.immortalwrt.eu.org/init_build_environment.sh)
+        curl -sL https://build-scripts.immortalwrt.eu.org/init_build_environment.sh -o /tmp/init.sh
+        sudo bash /tmp/init.sh || { echo "::error::初始化脚本执行失败"; exit 1; }
+        rm -f /tmp/init.sh
 
         # 设置时区和目录权限
         sudo timedatectl set-timezone "$TZ"
