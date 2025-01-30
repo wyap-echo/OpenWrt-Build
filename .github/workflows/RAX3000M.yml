@@ -1,5 +1,6 @@
 # File: .github/workflows/build-openwrt.yml
-# 基于 RAX3000M 的 ImmortalWrt 云编译工作流（优化修复版）
+# RAX3000M ImmortalWrt 固件云编译配置（最终修复版）
+# 功能：自动编译、缓存加速、固件命名、产物上传
 
 name: Build RAX3000M Firmware
 
@@ -7,51 +8,49 @@ on:
   workflow_dispatch:  # 仅支持手动触发编译
 
 env:
-  # ========== 核心配置 ==========
-  REPO_URL: https://github.com/hanwckf/immortalwrt-mt798x.git
-  REPO_BRANCH: openwrt-21.02       # 源码分支
-  FEEDS_CONF: feeds.conf.default   # 默认 feeds 配置文件
-  CONFIG_FILE: configs/rax3000m.config  # 设备配置文件
-  DIY_P1_SH: diy-part1.sh          # 自定义脚本1（早期配置）
-  DIY_P2_SH: diy-part2.sh          # 自定义脚本2（后期配置）
-  TZ: Asia/Shanghai                # 时区设置
-  FIRMWARE_NAME: RAX3000M_$(date +"%Y%m%d")  # 固件命名规则
+  # ====== 核心配置 ======
+  REPO_URL: "https://github.com/hanwckf/immortalwrt-mt798x.git"
+  REPO_BRANCH: "openwrt-21.02"         # 源码分支
+  FEEDS_CONF: "feeds.conf.default"     # 默认 feeds 配置
+  CONFIG_FILE: "configs/rax3000m.config"  # 设备配置文件
+  TZ: "Asia/Shanghai"                  # 设置时区（影响日志时间）
+  FIRMWARE_NAME: "RAX3000M_$(date +'%Y%m%d')"  # 固件名称模板
 
 jobs:
   build:
-    runs-on: ubuntu-latest         # 使用最新 Ubuntu 环境
+    runs-on: ubuntu-latest  # 使用 GitHub 托管的 Ubuntu 最新版
 
     steps:
-    # ========== 代码检出 ==========
+    # ====== 1. 仓库代码检出 ======
     - name: Checkout Repository
-      uses: actions/checkout@v4    # 检出当前仓库代码（含自定义脚本）
+      uses: actions/checkout@v4  # 官方最新检出插件
       with:
-        submodules: recursive      # 递归检出子模块（如有）
+        submodules: recursive    # 递归检出子模块（如存在）
 
-    # ========== 缓存恢复 ==========
+    # ====== 2. 恢复编译缓存 ======
     - name: Restore Build Cache
       uses: actions/cache@v3
       with:
-        path: |
-          /workdir/openwrt/dl      # 缓存下载的软件包
-          /workdir/openwrt/ccache  # 缓存编译中间文件
+        path: |  # 缓存目录定义
+          /workdir/openwrt/dl      # 源码包缓存
+          /workdir/openwrt/ccache  # 编译中间文件缓存
         key: ${{ runner.os }}-immortalwrt-${{ hashFiles('$FEEDS_CONF') }}-${{ hashFiles('$CONFIG_FILE') }}
-        restore-keys: |
-          ${{ runner.os }}-immortalwrt-  # 缓存回退策略
+        restore-keys: |  # 缓存回退策略
+          ${{ runner.os }}-immortalwrt-
 
-    # ========== 环境初始化 ==========
+    # ====== 3. 初始化编译环境 ======
     - name: Setup Build Environment
       env:
-        DEBIAN_FRONTEND: noninteractive  # 禁用交互提示
+        DEBIAN_FRONTEND: noninteractive  # 禁用交互式提示
       run: |
-        # 清理冗余目录（保留APT源配置）
+        # 清理冗余目录（保留系统APT源配置）
         sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
 
-        # 修复APT源配置（关键修复步骤）
+        # 修复APT源配置（关键步骤）
         sudo sed -i 's/^#\s*deb-src/deb-src/' /etc/apt/sources.list  # 启用源码仓库
         sudo add-apt-repository -y universe  # 启用 universe 仓库
 
-        # 安装编译依赖
+        # 安装基础依赖
         sudo apt-get update -qq
         sudo apt-get install -y \
           build-essential \
@@ -59,9 +58,10 @@ jobs:
           libncurses5-dev \
           git \
           python3 \
-          rsync
+          rsync \
+          curl  # 确保下载工具存在
 
-        # 初始化 ImmortalWrt 编译环境
+        # 修复环境初始化脚本执行方式（避免进程替换错误）
         curl -sL https://build-scripts.immortalwrt.eu.org/init_build_environment.sh -o /tmp/init.sh
         sudo bash /tmp/init.sh || { echo "::error::初始化脚本执行失败"; exit 1; }
         rm -f /tmp/init.sh
@@ -70,69 +70,92 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir && sudo chown $USER:$GROUPS /workdir
 
-    # ========== 源码克隆 ==========
+    # ====== 4. 克隆源码仓库 ======
     - name: Clone Source Code
-      working-directory: /workdir  # 指定工作目录
+      working-directory: /workdir
       run: |
-        git clone "$REPO_URL" -b "$REPO_BRANCH" openwrt  # 克隆指定分支的源码
+        echo "▷ 正在克隆 ImmortalWrt 源码..."
+        git clone "$REPO_URL" -b "$REPO_BRANCH" openwrt
 
-    # ========== 自定义配置加载 ==========
-    - name: Apply Custom Configurations
+    # ====== 5. 加载自定义配置 ======
+    - name: Apply Custom Configuration
       run: |
         # 加载自定义 feeds 配置
         [ -e "$FEEDS_CONF" ] && mv "$FEEDS_CONF" /workdir/openwrt/feeds.conf.default
-        
-        # 执行第一阶段自定义脚本
-        chmod +x "$DIY_P1_SH"
-        cd /workdir/openwrt
-        "$GITHUB_WORKSPACE/$DIY_P1_SH" || exit 1  # 脚本失败则终止
 
-    # ========== 依赖管理 ==========
+        # 加载设备配置文件
+        [ -e "$CONFIG_FILE" ] && mv "$CONFIG_FILE" /workdir/openwrt/.config
+
+        # 执行自定义脚本（需自行准备 diy-part1.sh 和 diy-part2.sh）
+        if [ -f "$DIY_P1_SH" ]; then
+          chmod +x "$DIY_P1_SH"
+          cd /workdir/openwrt
+          "$GITHUB_WORKSPACE/$DIY_P1_SH" || exit 1
+        fi
+
+    # ====== 6. 更新依赖源 ======
     - name: Update Feeds
       run: |
         cd /workdir/openwrt
-        ./scripts/feeds update -a || exit 1  # 强制失败退出
+        ./scripts/feeds update -a || exit 1  # 失败立即终止
 
-    - name: Install Feeds
+    # ====== 7. 安装依赖包 ======
+    - name: Install Feeds Packages
       run: |
         cd /workdir/openwrt
         ./scripts/feeds install -a || exit 1
 
-    # ========== 编译准备 ==========
-    - name: Prepare Configuration
+    # ====== 8. 执行第二阶段自定义配置 ======
+    - name: Apply Post-Config Script
       run: |
-        # 加载设备配置文件
-        [ -e "$CONFIG_FILE" ] && mv "$CONFIG_FILE" /workdir/openwrt/.config
-        
-        # 执行第二阶段自定义脚本
-        chmod +x "$DIY_P2_SH"
-        cd /workdir/openwrt
-        "$GITHUB_WORKSPACE/$DIY_P2_SH" || exit 1
+        if [ -f "$DIY_P2_SH" ]; then
+          chmod +x "$DIY_P2_SH"
+          cd /workdir/openwrt
+          "$GITHUB_WORKSPACE/$DIY_P2_SH" || exit 1
+        fi
 
-    # ========== 资源下载 ==========
+    # ====== 9. 下载预编译包 ======
     - name: Download Packages
       run: |
         cd /workdir/openwrt
         make defconfig
-        echo "CONFIG_CCACHE=y" >> .config  # 启用 ccache
-        make CCACHE=1 download -j$(($(nproc) + 1))  # 多线程下载
+        echo "CONFIG_CCACHE=y" >> .config  # 强制启用 ccache
+        echo "::notice::⏬ 开始下载依赖包（使用 $(($(nproc) + 1)) 线程）..."
+        make CCACHE=1 download -j$(($(nproc) + 1)) || { 
+          echo "::warning::⚠️ 多线程下载失败，尝试单线程重试..."; 
+          make CCACHE=1 download -j1 V=s;
+        }
 
-    # ========== 固件编译 ==========
+    # ====== 10. 编译固件 ======
     - name: Compile Firmware
       env:
-        CCACHE_MAXSIZE: 2G  # 限制缓存大小
+        CCACHE_MAXSIZE: 2G  # 限制缓存体积
       run: |
         cd /workdir/openwrt
-        echo "::notice::🚀 开始编译，使用 $(($(nproc) + 1)) 线程..."
+        echo "::notice::🚀 开始编译（使用 $(($(nproc) + 1)) 线程）..."
         make CCACHE=1 -j$(($(nproc) + 1)) || { 
-          echo "::warning::⚠️ 编译失败，尝试单线程重试..."; 
+          echo "::warning::⚠️ 编译失败，尝试单线程调试模式..."; 
           make CCACHE=1 -j1 V=s; 
         }
-        echo "FIRMWARE_NAME=$FIRMWARE_NAME" >> $GITHUB_ENV  # 注入固件名称
+        echo "DEVICE_NAME=$(cat /workdir/openwrt/DEVICE_NAME)" >> $GITHUB_ENV
 
-    # ========== 固件上传 ==========
+    # ====== 11. 整理输出文件 ======
+    - name: Organize Artifacts
+      run: |
+        cd /workdir/openwrt/bin/targets/*/*
+        rm -rf packages
+        find . -name "*.ipk" -delete  # 清理冗余安装包
+        echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+
+    # ====== 12. 上传编译产物 ======
     - name: Upload Firmware Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.FIRMWARE_NAME }}   # 按日期命名的固件
-        path: /workdir/openwrt/bin/targets/*/*/*  # 自动匹配固件路径
+        name: ${{ env.FIRMWARE_NAME }}_${{ env.DEVICE_NAME }}  # 示例：RAX3000M_20240315_mediatek-mt7981
+        path: ${{ env.FIRMWARE_PATH }}/*.bin  # 仅上传固件文件
+        retention-days: 7  # 产物保留天数
+
+    # ====== 13. 空间检查（调试用）=====
+    - name: Check Disk Usage
+      if: ${{ always() }}  # 总是执行（即使失败）
+      run: df -hT
