@@ -43,30 +43,14 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive  # 禁用交互式提示
       run: |
-        # 清理冗余目录（保留系统APT源配置）
-        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-
-        # 修复APT源配置（关键步骤）
-        sudo sed -i 's/^#\s*deb-src/deb-src/' /etc/apt/sources.list  # 启用源码仓库
-        sudo add-apt-repository -y universe  # 启用 universe 仓库
-
-        # 安装基础依赖
-        sudo apt-get update -qq
-        sudo apt-get install -y \
-          build-essential \
-          ccache \
-          libncurses5-dev \
-          git \
-          python3 \
-          rsync \
-          curl \
-          ninja-build \  # [!] 新增
-          cmake          # [!] 新增
-
-        # 修复环境初始化脚本执行方式（避免进程替换错误）
-        curl -sL https://build-scripts.immortalwrt.eu.org/init_build_environment.sh -o /tmp/init.sh
-        sudo bash /tmp/init.sh || { echo "::error::初始化脚本执行失败"; exit 1; }
-        rm -f /tmp/init.sh
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo -E apt-get -qq update
+        sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.eu.org/init_build_environment.sh)'
+        sudo -E apt-get -qq autoremove --purge
+        sudo -E apt-get -qq clean
+        sudo timedatectl set-timezone "$TZ"
+        sudo mkdir -p /workdir
+        sudo chown $USER:$GROUPS /workdir
 
         # 设置时区和目录权限
         sudo timedatectl set-timezone "$TZ"
