@@ -1,88 +1,138 @@
-name: 🛠️ Build RAX3000M OpenWrt Firmware
+#
+# 🚀 RAX3000M 专用 OpenWrt 云编译工作流
+# 📅 最后更新：2024-04-07
+# 🔗 源码仓库：hanwckf/immortalwrt-mt798x
+#
+
+name: 🛠️ Build immortalwrt-mt798x-RAX3000M
 
 on:
-  workflow_dispatch: # 手动触发编译
   push:
-    branches: [ main ] # 主分支推送触发
+    branches: [ main ]  # ⚡ 仅在 main 分支推送时触发
+  repository_dispatch:  # 🔄 支持外部 API 触发
 
 env:
   REPO_URL: https://github.com/hanwckf/immortalwrt-mt798x.git
   REPO_BRANCH: openwrt-21.02
-  FIRMWARE_NAME: RAX3000M-OpenWrt-$(date +%Y%m%d) # 标准化固件名称
+  FEEDS_CONF: feeds.conf.default
+  CONFIG_FILE: configs/rax3000m.config
+  DIY_P1_SH: diy-part1.sh
+  DIY_P2_SH: diy-part2.sh
   TZ: Asia/Shanghai
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 120 # 编译超时时间
+    outputs:
+      firmware_name: ${{ steps.set_firmware_name.outputs.name }}
 
     steps:
-    # --------------------- 初始化阶段 ---------------------
-    - name: 🛠️ Checkout Repository
+    # ------------------------------
+    # 1️⃣ 代码检出阶段
+    # ------------------------------
+    - name: 📥 Checkout repository
       uses: actions/checkout@v4
       with:
-        submodules: recursive # 递归克隆子模块
+        submodules: recursive  # 🔄 递归检出子模块
 
-    - name: 🐳 Setup Build Environment
+    # ------------------------------
+    # 2️⃣ 初始化环境 (保持原始代码)
+    # ------------------------------
+    - name: 🖥️ Initialization environment
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo rm -rf /etc/apt/sources.list.d/* # 清理旧源
-        sudo apt-get update -qq
-        sudo bash <(curl -sL https://build-scripts.immortalwrt.eu.org/init_build_environment.sh)
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo -E apt-get -qq update
+        sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.eu.org/init_build_environment.sh)'
+        sudo -E apt-get -qq autoremove --purge
+        sudo -E apt-get -qq clean
         sudo timedatectl set-timezone "$TZ"
+        sudo mkdir -p /workdir
+        sudo chown $USER:$GROUPS /workdir
 
-    # --------------------- 源码处理 ---------------------
-    - name: 📥 Clone ImmortalWrt Source
+    # ------------------------------
+    # 3️⃣ 源码管理阶段
+    # ------------------------------
+    - name: 📦 Clone source code
       working-directory: /workdir
       run: |
-        git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
+        df -hT $PWD  # 📊 显示磁盘空间
+        git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    - name: 🔧 Apply Custom Config
+    # ------------------------------
+    # 4️⃣ 自定义配置阶段
+    # ------------------------------
+    - name: ⚙️ Load custom feeds
       run: |
-        [ -e configs/rax3000m.config ] && cp configs/rax3000m.config openwrt/.config
-        [ -e diy-part1.sh ] && chmod +x diy-part1.sh && ./diy-part1.sh
+        [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
+        chmod +x $DIY_P1_SH
+        cd openwrt
+        $GITHUB_WORKSPACE/$DIY_P1_SH
 
-    # --------------------- 依赖管理 ---------------------
-    - name: 🔄 Update Feeds
-      working-directory: openwrt
-      run: ./scripts/feeds update -a
+    - name: 🔄 Update feeds
+      run: cd openwrt && ./scripts/feeds update -a
 
-    - name: 📦 Install Feeds
-      working-directory: openwrt
-      run: ./scripts/feeds install -a
+    - name: 📦 Install feeds
+      run: cd openwrt && ./scripts/feeds install -a
 
-    # --------------------- 编译阶段 ---------------------
-    - name: 📦 Download Packages
-      working-directory: openwrt
+    - name: ⚙️ Load custom configuration
       run: |
+        [ -e files ] && mv files openwrt/files
+        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
+        chmod +x $DIY_P2_SH
+        cd openwrt
+        $GITHUB_WORKSPACE/$DIY_P2_SH
+
+    # ------------------------------
+    # 5️⃣ 编译阶段
+    # ------------------------------
+    - name: 📥 Download packages
+      id: package
+      run: |
+        cd openwrt
         make defconfig
-        make download -j$(nproc) # 并行下载
-        find dl -size -1024c -delete # 清理无效下载
+        make download -j8
+        find dl -size -1024c -exec ls -l {} \;  # 🔍 检查无效小文件
+        find dl -size -1024c -exec rm -f {} \;  # 🧹 清理无效文件
 
-    - name: 🔨 Compile Firmware
-      working-directory: openwrt
+    - name: 🔨 Compile firmware
+      id: compile
       run: |
-        echo "Using $(nproc) threads for compilation"
-        make -j$(nproc) || make -j1 V=s # 失败时单线程调试
+        cd openwrt
+        echo -e "ℹ️ 使用 $(nproc) 线程编译"
+        make -j$(nproc) || make -j1 || make -j1 V=s
+        echo "status=success" >> $GITHUB_OUTPUT
+        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
 
-    # --------------------- 输出处理 ---------------------
-    - name: 📤 Upload Firmware
+    # ------------------------------
+    # 6️⃣ 固件处理阶段
+    # ------------------------------
+    - name: 📊 Check space usage
+      if: (!cancelled())
+      run: df -hT  # 📈 显示最终磁盘使用
+
+    - name: 🏷️ Set firmware name
+      id: set_firmware_name
+      run: |
+        DATE=$(date +"%Y%m%d")
+        HASH=${GITHUB_SHA:0:7}
+        echo "name=RAX3000M-$DATE-$HASH" >> $GITHUB_OUTPUT
+
+    - name: 📤 Upload firmware
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.FIRMWARE_NAME }}_${{ env.DEVICE_NAME }}  # 示例：RAX3000M_20240315_mediatek-mt7981
-        path: openwrt/bin/targets/*/*/*
-        retention-days: 3 # 自动清理旧文件
+        name: ${{ steps.set_firmware_name.outputs.name }}
+        path: openwrt/bin/targets/*/*/
+        compression-level: 0  # 🚫 禁用压缩加速上传
+        retention-days: 7     # 🗑️ 自动清理旧文件
 
-    # --------------------- 后期清理 ---------------------
-    - name: 🧹 Clean Old Releases
-      uses: dev-drprasad/delete-older-releases@v0.2.0
+    # ------------------------------
+    # 7️⃣ 清理阶段
+    # ------------------------------
+    - name: 🧹 Cleanup workflow runs
+      uses: GitRML/delete-workflow-runs@main
       with:
-        keep_latest: 3 # 保留最近3个版本
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: 📊 Space Report
-      if: always()
-      run: df -hT # 存储空间报告
+        retain_days: 1
+        keep_minimum_runs: 3
