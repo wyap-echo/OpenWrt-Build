@@ -7,10 +7,7 @@
 name: 🛠️ Build immortalwrt-mt798x-RAX3000M
 
 on:
-  push:
-    branches: [ main ]  # ⚡ 仅在 main 分支推送时触发
-  repository_dispatch:  # 🔄 支持外部 API 触发
-
+  workflow_dispatch:  # 🔌 仅保留手动触发
 env:
   REPO_URL: https://github.com/hanwckf/immortalwrt-mt798x.git
   REPO_BRANCH: openwrt-21.02
