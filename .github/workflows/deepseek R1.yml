@@ -1,12 +1,7 @@
-name: 🛠️ Build RAX3000M OpenWrt
+name: 🚀 RAX3000M OpenWrt Manual Build
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'configs/**'
-      - 'diy-part*.sh'
+  workflow_dispatch:  # 🔌 仅保留手动触发
 
 env:
   REPO_URL: https://github.com/hanwckf/immortalwrt-mt798x.git
