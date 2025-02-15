@@ -60,7 +60,7 @@ jobs:
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
     - name: 📦 配置缓存
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           /workdir/openwrt/dl
@@ -137,7 +137,7 @@ jobs:
         echo "FIRMWARE_DIR=$PWD" >> $GITHUB_ENV
 
     - name: ⬆️ 上传固件
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ env.FIRMWARE_PREFIX }}-${{ steps.rename.outputs.date }}
         path: ${{ env.FIRMWARE_DIR }}/*.bin
