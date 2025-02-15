@@ -1,21 +1,28 @@
-# 🛠️ RAX3000M 固件编译工作流 (最终优化版)
-# ✅ GitHub Actions 官方标准 | 安全合规 | 高效编译
+# 🛠️ RAX3000M 固件编译工作流
+# 🚀 优化要点：规范命名/缓存加速/错误处理
+# ⚠️ 保留原始环境初始化步骤
 
 name: Build RAX3000M Firmware
 
 on:
-  workflow_dispatch:    # 🎯 手动触发
+  workflow_dispatch:    # 🎯 仅手动触发
   push:
-    branches: [main]
+    branches:
+      - main
 
 env:
+  # 🔧 基础配置
   REPO_URL: https://github.com/hanwckf/immortalwrt-mt798x.git
   REPO_BRANCH: openwrt-21.02
   TZ: Asia/Shanghai
+  
+  # 📁 文件配置
   CONFIG_FILE: configs/rax3000m.config
   FEEDS_CONF: feeds.conf.default
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
+  
+  # 🏷️ 固件命名
   FIRMWARE_PREFIX: ImmortalWrt-RAX3000M
 
 jobs:
@@ -25,21 +32,15 @@ jobs:
 
     steps:
     # ======================
-    # 🧹 环境初始化 (安全增强)
+    # 🛠️ 环境初始化 (原始步骤)
     # ======================
-    - name: Initialize environment
+    - name: 🧹 初始化环境
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
         sudo -E apt-get -qq update
-        
-        # 🔒 脚本完整性校验
-        curl -sSL https://build-scripts.immortalwrt.eu.org/init_build_environment.sh -o script.sh
-        echo "EXPECTED_HASH=your_sha256_here" >> hash_check
-        sha256sum -c hash_check || exit 1
-        sudo bash script.sh
-        
+        sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.eu.org/init_build_environment.sh)'
         sudo -E apt-get -qq autoremove --purge
         sudo -E apt-get -qq clean
         sudo timedatectl set-timezone "$TZ"
@@ -47,73 +48,83 @@ jobs:
         sudo chown $USER:$GROUPS /workdir
 
     # ======================
-    # 📥 源码获取与缓存配置
+    # 📥 源码获取
     # ======================
-    - name: Clone source code
+    - name: 📥 克隆源码
       working-directory: /workdir
       run: |
-        git clone --depth=1 --filter=blob:none $REPO_URL -b $REPO_BRANCH openwrt || {
-          echo "::error::Git clone failed!"
+        git clone --depth=1 $REPO_URL -b $REPO_BRANCH openwrt || {
+          echo "::error::源码克隆失败！"
           exit 1
         }
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    - name: Configure cache
-      uses: actions/cache@v4
+    - name: 📦 配置缓存
+      uses: actions/cache@v3
       with:
         path: |
           /workdir/openwrt/dl
           /workdir/ccache
-        key: ${{ runner.os }}-${{ hashFiles('configs/rax3000m.config') }}-v6
+        key: ${{ runner.os }}-${{ hashFiles('$CONFIG_FILE') }}-v5
 
     # ======================
-    # ⚙️ 配置与编译
+    # ⚙️ 配置阶段
     # ======================
-    - name: Apply configurations
+    - name: 🔧 应用自定义配置
       run: |
-        [ -e $FEEDS_CONF ] && cp $FEEDS_CONF openwrt/feeds.conf.default || echo "::notice::Using default feeds"
+        [ -e $FEEDS_CONF ] && cp $FEEDS_CONF openwrt/feeds.conf.default
         [ -e $CONFIG_FILE ] && cp $CONFIG_FILE openwrt/.config || {
-          echo "::error::Config file missing!"
+          echo "::error::核心配置文件缺失！"
           exit 1
         }
 
+        # 🛠️ 执行自定义脚本
         for script in $DIY_P1_SH $DIY_P2_SH; do
           if [ -f "$script" ]; then
             chmod +x "$script"
             cd openwrt
-            $GITHUB_WORKSPACE/$script || exit 1
+            $GITHUB_WORKSPACE/$script || {
+              echo "::error::脚本执行失败: $script"
+              exit 1
+            }
             cd ..
           fi
         done
 
-    - name: Download packages
+    # ======================
+    # 🛠️ 编译阶段
+    # ======================
+    - name: ⏬ 下载软件包
       run: |
         cd openwrt
         make defconfig
         make download -j$(nproc) || {
-          echo "::error::Package download failed!"
+          echo "::error::软件包下载失败！"
           exit 1
         }
+        # 🧹 清理无效下载
         find dl -size -1024c -delete
 
-    - name: Compile firmware
+    - name: 🔥 编译固件
       timeout-minutes: 120
       run: |
         cd openwrt
-        make -j$(nproc) || make -j2 || make -j1 V=s || {
-          echo "::error::Compilation failed!"
+        echo "核心数: $(nproc)"
+        make -j$(($(nproc)+1)) || make -j2 || make -j1 V=s || {
+          echo "::error::编译失败！"
           exit 1
         }
 
+        # ✅ 验证输出文件
         if [ ! -f bin/targets/*/*/*.bin ]; then
-          echo "::error::No firmware generated!"
+          echo "::error::未生成固件文件！"
           exit 1
-        fi
+        }
 
     # ======================
-    # 📤 输出与制品上传
+    # 📤 输出处理
     # ======================
-    - name: Rename firmware
+    - name: 🏷️ 重命名固件
       id: rename
       run: |
         cd openwrt/bin/targets/*/*
@@ -125,8 +136,8 @@ jobs:
         done
         echo "FIRMWARE_DIR=$PWD" >> $GITHUB_ENV
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
+    - name: ⬆️ 上传固件
+      uses: actions/upload-artifact@v3
       with:
-        name: ${{ env.FIRMWARE_PREFIX }}-$(date +"%Y%m%d-%H%M")
+        name: ${{ env.FIRMWARE_PREFIX }}-${{ steps.rename.outputs.date }}
         path: ${{ env.FIRMWARE_DIR }}/*.bin
