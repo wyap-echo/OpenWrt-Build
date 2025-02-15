@@ -1,28 +1,23 @@
 # 🛠️ RAX3000M 固件编译工作流
-# 🚀 优化要点：规范命名/缓存加速/错误处理
-# ⚠️ 保留原始环境初始化步骤
+# 🚀 最后更新：2025-02-16 ｜ GitHub Actions 兼容性修复
+# ✨ 变更记录：升级 upload-artifact@v4 | 修复弃用警告
 
 name: Build RAX3000M Firmware
 
 on:
-  workflow_dispatch:    # 🎯 仅手动触发
+  workflow_dispatch:
   push:
     branches:
       - main
 
 env:
-  # 🔧 基础配置
   REPO_URL: https://github.com/hanwckf/immortalwrt-mt798x.git
   REPO_BRANCH: openwrt-21.02
   TZ: Asia/Shanghai
-  
-  # 📁 文件配置
   CONFIG_FILE: configs/rax3000m.config
   FEEDS_CONF: feeds.conf.default
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
-  
-  # 🏷️ 固件命名
   FIRMWARE_PREFIX: ImmortalWrt-RAX3000M
 
 jobs:
@@ -32,7 +27,7 @@ jobs:
 
     steps:
     # ======================
-    # 🛠️ 环境初始化 (原始步骤)
+    # 🛠️ 环境初始化 (保持原样)
     # ======================
     - name: 🧹 初始化环境
       env:
@@ -65,7 +60,7 @@ jobs:
         path: |
           /workdir/openwrt/dl
           /workdir/ccache
-        key: ${{ runner.os }}-${{ hashFiles('$CONFIG_FILE') }}-v5
+        key: ${{ runner.os }}-${{ hashFiles('$CONFIG_FILE') }}-v6
 
     # ======================
     # ⚙️ 配置阶段
@@ -78,7 +73,6 @@ jobs:
           exit 1
         }
 
-        # 🛠️ 执行自定义脚本
         for script in $DIY_P1_SH $DIY_P2_SH; do
           if [ -f "$script" ]; then
             chmod +x "$script"
@@ -102,7 +96,6 @@ jobs:
           echo "::error::软件包下载失败！"
           exit 1
         }
-        # 🧹 清理无效下载
         find dl -size -1024c -delete
 
     - name: 🔥 编译固件
@@ -115,14 +108,13 @@ jobs:
           exit 1
         }
 
-        # ✅ 验证输出文件
         if [ ! -f bin/targets/*/*/*.bin ]; then
           echo "::error::未生成固件文件！"
           exit 1
         }
 
     # ======================
-    # 📤 输出处理
+    # 📤 输出处理 (关键更新点✨)
     # ======================
     - name: 🏷️ 重命名固件
       id: rename
@@ -131,13 +123,14 @@ jobs:
         rm -rf packages
         BUILD_DATE=$(date +"%Y%m%d-%H%M")
         for file in *.bin; do
-          new_name="${file/-squashfs-/-$BUILD_DATE-}"
+          new_name="${file/-squashfs-/-$BUILD_DATE-}"  # ✨ 时间戳精确到分钟
           mv "$file" "$FIRMWARE_PREFIX-$new_name"
         done
         echo "FIRMWARE_DIR=$PWD" >> $GITHUB_ENV
 
-    - name: ⬆️ 上传固件
-      uses: actions/upload-artifact@v3
+    - name: ⬆️ 上传固件 (v4版本修复)
+      uses: actions/upload-artifact@v4  # ✨ 关键修复点
       with:
-        name: ${{ env.FIRMWARE_PREFIX }}-${{ steps.rename.outputs.date }}
+        name: ${{ env.FIRMWARE_PREFIX }}-$(date +%Y%m%d-%H%M)
         path: ${{ env.FIRMWARE_DIR }}/*.bin
+        retention-days: 7  # ✨ 新增自动清理策略
