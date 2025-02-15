@@ -1,6 +1,5 @@
 # 🛠️ RAX3000M 固件编译工作流
-# 🚀 最后更新：2025-02-16 ｜ GitHub Actions 兼容性修复
-# ✨ 变更记录：升级 upload-artifact@v4 | 修复弃用警告
+# 🔑 修复缓存键生成问题 | 最后更新：2024-05-18
 
 name: Build RAX3000M Firmware
 
@@ -27,7 +26,7 @@ jobs:
 
     steps:
     # ======================
-    # 🛠️ 环境初始化 (保持原样)
+    # 🛠️ 环境初始化 (保持不变)
     # ======================
     - name: 🧹 初始化环境
       env:
@@ -43,7 +42,7 @@ jobs:
         sudo chown $USER:$GROUPS /workdir
 
     # ======================
-    # 📥 源码获取
+    # 📥 源码获取 (关键修复🔑)
     # ======================
     - name: 📥 克隆源码
       working-directory: /workdir
@@ -59,8 +58,8 @@ jobs:
       with:
         path: |
           /workdir/openwrt/dl
-          /workdir/ccache
-        key: ${{ runner.os }}-${{ hashFiles('$CONFIG_FILE') }}-v6
+          /workdir/openwrt/ccache
+        key: ${{ runner.os }}-${{ hashFiles('configs/rax3000m.config') }}-v7  # 🔑 修复路径引用
 
     # ======================
     # ⚙️ 配置阶段
@@ -114,7 +113,7 @@ jobs:
         }
 
     # ======================
-    # 📤 输出处理 (关键更新点✨)
+    # 📤 输出处理
     # ======================
     - name: 🏷️ 重命名固件
       id: rename
@@ -123,14 +122,14 @@ jobs:
         rm -rf packages
         BUILD_DATE=$(date +"%Y%m%d-%H%M")
         for file in *.bin; do
-          new_name="${file/-squashfs-/-$BUILD_DATE-}"  # ✨ 时间戳精确到分钟
+          new_name="${file/-squashfs-/-$BUILD_DATE-}"
           mv "$file" "$FIRMWARE_PREFIX-$new_name"
         done
         echo "FIRMWARE_DIR=$PWD" >> $GITHUB_ENV
 
-    - name: ⬆️ 上传固件 (v4版本修复)
-      uses: actions/upload-artifact@v4  # ✨ 关键修复点
+    - name: ⬆️ 上传固件
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ env.FIRMWARE_PREFIX }}-$(date +%Y%m%d-%H%M)
         path: ${{ env.FIRMWARE_DIR }}/*.bin
-        retention-days: 7  # ✨ 新增自动清理策略
+        retention-days: 7
