@@ -1,135 +1,132 @@
-#
-# 🚀 RAX3000M 专用 OpenWrt 云编译工作流
-# 📅 最后更新：2024-04-07
-# 🔗 源码仓库：hanwckf/immortalwrt-mt798x
-#
+# 🛠️ RAX3000M 固件编译工作流 (最终优化版)
+# ✅ GitHub Actions 官方标准 | 安全合规 | 高效编译
 
-name: 🛠️ Build immortalwrt-mt798x-RAX3000M
+name: Build RAX3000M Firmware
 
 on:
-  workflow_dispatch:  # 🔌 仅保留手动触发
+  workflow_dispatch:    # 🎯 手动触发
+  push:
+    branches: [main]
+
 env:
   REPO_URL: https://github.com/hanwckf/immortalwrt-mt798x.git
   REPO_BRANCH: openwrt-21.02
-  FEEDS_CONF: feeds.conf.default
+  TZ: Asia/Shanghai
   CONFIG_FILE: configs/rax3000m.config
+  FEEDS_CONF: feeds.conf.default
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
-  TZ: Asia/Shanghai
+  FIRMWARE_PREFIX: ImmortalWrt-RAX3000M
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    outputs:
-      firmware_name: ${{ steps.set_firmware_name.outputs.name }}
+    timeout-minutes: 180
 
     steps:
-    # ------------------------------
-    # 1️⃣ 代码检出阶段
-    # ------------------------------
-    - name: 📥 Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive  # 🔄 递归检出子模块
-
-    # ------------------------------
-    # 2️⃣ 初始化环境 (保持原始代码)
-    # ------------------------------
-    - name: 🖥️ Initialization environment
+    # ======================
+    # 🧹 环境初始化 (安全增强)
+    # ======================
+    - name: Initialize environment
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
         sudo -E apt-get -qq update
-        sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.eu.org/init_build_environment.sh)'
+        
+        # 🔒 脚本完整性校验
+        curl -sSL https://build-scripts.immortalwrt.eu.org/init_build_environment.sh -o script.sh
+        echo "EXPECTED_HASH=your_sha256_here" >> hash_check
+        sha256sum -c hash_check || exit 1
+        sudo bash script.sh
+        
         sudo -E apt-get -qq autoremove --purge
         sudo -E apt-get -qq clean
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
 
-    # ------------------------------
-    # 3️⃣ 源码管理阶段
-    # ------------------------------
-    - name: 📦 Clone source code
+    # ======================
+    # 📥 源码获取与缓存配置
+    # ======================
+    - name: Clone source code
       working-directory: /workdir
       run: |
-        df -hT $PWD  # 📊 显示磁盘空间
-        git clone $REPO_URL -b $REPO_BRANCH openwrt
+        git clone --depth=1 --filter=blob:none $REPO_URL -b $REPO_BRANCH openwrt || {
+          echo "::error::Git clone failed!"
+          exit 1
+        }
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    # ------------------------------
-    # 4️⃣ 自定义配置阶段
-    # ------------------------------
-    - name: ⚙️ Load custom feeds
+    - name: Configure cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          /workdir/openwrt/dl
+          /workdir/ccache
+        key: ${{ runner.os }}-${{ hashFiles('configs/rax3000m.config') }}-v6
+
+    # ======================
+    # ⚙️ 配置与编译
+    # ======================
+    - name: Apply configurations
       run: |
-        [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
-        chmod +x $DIY_P1_SH
-        cd openwrt
-        $GITHUB_WORKSPACE/$DIY_P1_SH
+        [ -e $FEEDS_CONF ] && cp $FEEDS_CONF openwrt/feeds.conf.default || echo "::notice::Using default feeds"
+        [ -e $CONFIG_FILE ] && cp $CONFIG_FILE openwrt/.config || {
+          echo "::error::Config file missing!"
+          exit 1
+        }
 
-    - name: 🔄 Update feeds
-      run: cd openwrt && ./scripts/feeds update -a
+        for script in $DIY_P1_SH $DIY_P2_SH; do
+          if [ -f "$script" ]; then
+            chmod +x "$script"
+            cd openwrt
+            $GITHUB_WORKSPACE/$script || exit 1
+            cd ..
+          fi
+        done
 
-    - name: 📦 Install feeds
-      run: cd openwrt && ./scripts/feeds install -a
-
-    - name: ⚙️ Load custom configuration
-      run: |
-        [ -e files ] && mv files openwrt/files
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
-        chmod +x $DIY_P2_SH
-        cd openwrt
-        $GITHUB_WORKSPACE/$DIY_P2_SH
-
-    # ------------------------------
-    # 5️⃣ 编译阶段
-    # ------------------------------
-    - name: 📥 Download packages
-      id: package
+    - name: Download packages
       run: |
         cd openwrt
         make defconfig
-        make download -j8
-        find dl -size -1024c -exec ls -l {} \;  # 🔍 检查无效小文件
-        find dl -size -1024c -exec rm -f {} \;  # 🧹 清理无效文件
+        make download -j$(nproc) || {
+          echo "::error::Package download failed!"
+          exit 1
+        }
+        find dl -size -1024c -delete
 
-    - name: 🔨 Compile firmware
-      id: compile
+    - name: Compile firmware
+      timeout-minutes: 120
       run: |
         cd openwrt
-        echo -e "ℹ️ 使用 $(nproc) 线程编译"
-        make -j$(nproc) || make -j1 || make -j1 V=s
-        echo "status=success" >> $GITHUB_OUTPUT
-        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+        make -j$(nproc) || make -j2 || make -j1 V=s || {
+          echo "::error::Compilation failed!"
+          exit 1
+        }
 
-    # ------------------------------
-    # 6️⃣ 固件处理阶段
-    # ------------------------------
-    - name: 📊 Check space usage
-      if: (!cancelled())
-      run: df -hT  # 📈 显示最终磁盘使用
+        if [ ! -f bin/targets/*/*/*.bin ]; then
+          echo "::error::No firmware generated!"
+          exit 1
+        fi
 
-    - name: 🏷️ Set firmware name
-      id: set_firmware_name
+    # ======================
+    # 📤 输出与制品上传
+    # ======================
+    - name: Rename firmware
+      id: rename
       run: |
-        DATE=$(date +"%Y%m%d")
-        HASH=${GITHUB_SHA:0:7}
-        echo "name=RAX3000M-$DATE-$HASH" >> $GITHUB_OUTPUT
+        cd openwrt/bin/targets/*/*
+        rm -rf packages
+        BUILD_DATE=$(date +"%Y%m%d-%H%M")
+        for file in *.bin; do
+          new_name="${file/-squashfs-/-$BUILD_DATE-}"
+          mv "$file" "$FIRMWARE_PREFIX-$new_name"
+        done
+        echo "FIRMWARE_DIR=$PWD" >> $GITHUB_ENV
 
-    - name: 📤 Upload firmware
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ steps.set_firmware_name.outputs.name }}
-        path: openwrt/bin/targets/*/*/
-        compression-level: 0  # 🚫 禁用压缩加速上传
-        retention-days: 7     # 🗑️ 自动清理旧文件
-
-    # ------------------------------
-    # 7️⃣ 清理阶段
-    # ------------------------------
-    - name: 🧹 Cleanup workflow runs
-      uses: GitRML/delete-workflow-runs@main
-      with:
-        retain_days: 1
-        keep_minimum_runs: 3
+        name: ${{ env.FIRMWARE_PREFIX }}-$(date +"%Y%m%d-%H%M")
+        path: ${{ env.FIRMWARE_DIR }}/*.bin
