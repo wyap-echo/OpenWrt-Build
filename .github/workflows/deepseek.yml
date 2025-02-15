@@ -59,14 +59,6 @@ jobs:
         }
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    - name: 📦 配置缓存
-      uses: actions/cache@v4
-      with:
-        path: |
-          /workdir/openwrt/dl
-          /workdir/ccache
-        key: ${{ runner.os }}-${{ hashFiles('$CONFIG_FILE') }}-v5
-
     # ======================
     # ⚙️ 配置阶段
     # ======================
