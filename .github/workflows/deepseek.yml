@@ -110,7 +110,6 @@ jobs:
         path: ${{ env.FIRMWARE }}
 
     - name: Delete workflow runs
-      permissions: write-all
       uses: GitRML/delete-workflow-runs@main
       with:
         retain_days: 1
