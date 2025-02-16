@@ -12,9 +12,9 @@ name: Build immortalwrt-mt798x-RAX3000M
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
+#  push:
+#    branches:
+#      - main
 
 env:
   REPO_URL: https://github.com/hanwckf/immortalwrt-mt798x.git
