@@ -40,8 +40,20 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
-        sudo apt-get -qq update && sudo apt-get -qq install -y build-essential git ccache zlib1g-dev
+        sudo apt-get update || sudo apt-get update --allow-unauthenticated
+        sudo apt-get -qq install -y gnupg wget lsb-release
+        # 更新APT源列表，尝试使用官方源或阿里云源
+        echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) main restricted universe multiverse" | sudo tee /etc/apt/sources.list
+        echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc)-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+        echo "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc)-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+        sudo apt-get update
+
+        # 安装必要的软件包
+        sudo apt-get -qq install -y build-essential ccache zlib1g-dev git
+
+        # 初始化构建环境
         sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.eu.org/init_build_environment.sh)'
+
         sudo apt-get -qq autoremove --purge && sudo apt-get -qq clean
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
