@@ -125,8 +125,8 @@ jobs:
     - name: Generate firmware filename 📝
       id: generate_filename
       run: |
-        # 获取源码的标签作为版本号
-        VERSION=$(cd openwrt && git describe --tags --abbrev=0)
+        # 使用固定的版本号
+        VERSION="immortalwrt-21.02"
         # 获取提交时间戳并格式化
         TIMESTAMP=$(date -d "@${{ github.event.head_commit.timestamp }}" '+%Y%m%d')
         # 生成完整的文件名
