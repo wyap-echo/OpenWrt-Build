@@ -1,0 +1,33 @@
+name: Test Generate Firmware Filename
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code 🛠️
+      uses: actions/checkout@main
+      # 检出代码
+
+    - name: Generate firmware filename 📝
+      id: generate_filename
+      run: |
+        # 使用固定的版本号
+        VERSION="immortalwrt-21.02"
+        # 输出时间戳，确保传递正确
+        echo "Timestamp: ${{ github.event.head_commit.timestamp }}"
+        # 使用正确的方式格式化时间戳
+        TIMESTAMP=$(date -d @${{ github.event.head_commit.timestamp }} '+%Y%m%d')
+        # 生成完整的文件名
+        FILENAME="RAX3000M_mediatek_mt7981_${VERSION}-${{ github.run_id }}-${TIMESTAMP}"
+        echo "Generated firmware filename: $FILENAME"
+        echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+      # 仅验证文件名生成
+
+    - name: Output the generated firmware filename
+      run: |
+        echo "The generated firmware filename is: ${{ env.FILENAME }}"
+      # 输出文件名，检查是否正确生成
