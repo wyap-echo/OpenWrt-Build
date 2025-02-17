@@ -53,6 +53,7 @@ jobs:
         sudo -E apt-get -qq update
         sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.eu.org/init_build_environment.sh)'
         sudo apt-get autoremove --purge -y && sudo apt-get clean
+        sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir && sudo chown $USER:$GROUPS /workdir
       # 该步骤用于初始化构建环境并安装所需的依赖包
 
@@ -147,10 +148,8 @@ jobs:
       run: |
         # 使用固定的版本号
         VERSION="immortalwrt-21.02"
-        # 输出时间戳，确保传递正确
-        echo "Timestamp: ${{ github.event.head_commit.timestamp }}"
-        # 使用正确的方式格式化时间戳
-        TIMESTAMP=$(date -d @${{ github.event.head_commit.timestamp }} '+%Y%m%d')
+        # 获取当前日期并格式化为 YYYYMMDD
+        TIMESTAMP=$(date '+%Y%m%d')
         # 生成完整的文件名
         FILENAME="RAX3000M_mediatek_mt7981_${VERSION}-${{ github.run_id }}-${TIMESTAMP}"
         echo "Generated firmware filename: $FILENAME"
