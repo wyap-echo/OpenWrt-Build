@@ -105,6 +105,7 @@ jobs:
         path: |
           openwrt/build_dir
           openwrt/staging_dir
+          openwrt/scripts  # 确保缓存 scripts 目录
         key: ${{ runner.os }}-openwrt-build-${{ hashFiles('**/feeds.conf.default') }}
         restore-keys: |
           ${{ runner.os }}-openwrt-build-
