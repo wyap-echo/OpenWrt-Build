@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Build chartGPT-immortalwrt-mt798x-RAX3000M
+name: Build immortalwrt-mt798x-RAX3000M
 
 on:
   workflow_dispatch:
@@ -127,8 +127,10 @@ jobs:
       run: |
         # 获取源码的标签作为版本号
         VERSION=$(cd openwrt && git describe --tags --abbrev=0)
+        # 获取提交时间戳并格式化
+        TIMESTAMP=$(date -d "@${{ github.event.head_commit.timestamp }}" '+%Y%m%d')
         # 生成完整的文件名
-        FILENAME="RAX3000M_mediatek_mt7981_${VERSION}-${{ github.run_id }}-${{ github.event.head_commit.timestamp | fromJson | date: '%Y%m%d' }}"
+        FILENAME="RAX3000M_mediatek_mt7981_${VERSION}-${{ github.run_id }}-${TIMESTAMP}"
         echo "Generated firmware filename: $FILENAME"
         echo "FILENAME=$FILENAME" >> $GITHUB_ENV
       # 该步骤生成固件文件名，并保存到环境变量中
@@ -146,4 +148,4 @@ jobs:
       with:
         retain_days: 1
         keep_minimum_runs: 3
-      # 该步骤删除历史的工作流记录，保持工作流的整洁
+      # 该步骤删除历史的工作流记录，保持工作流整洁
