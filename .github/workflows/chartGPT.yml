@@ -43,7 +43,21 @@ jobs:
         key: ${{ runner.os }}-openwrt-${{ hashFiles('**/feeds.conf.default') }}
         restore-keys: |
           ${{ runner.os }}-openwrt-
+      id: cache-dl
       # 该步骤缓存 OpenWrt 下载的依赖包，避免重复下载
+
+    - name: Cache OpenWrt build directory 🛠️
+      uses: actions/cache@v3
+      with:
+        path: |
+          openwrt/build_dir
+          openwrt/staging_dir
+          openwrt/scripts  # 确保缓存 `scripts` 目录
+        key: ${{ runner.os }}-openwrt-build-${{ hashFiles('**/feeds.conf.default') }}
+        restore-keys: |
+          ${{ runner.os }}-openwrt-build-
+      id: cache-build
+      # 恢复构建目录和脚本缓存
 
     - name: Initialization environment 🖥️
       env:
@@ -99,18 +113,6 @@ jobs:
         find dl -size -1024c -exec rm -f {} \;
       # 该步骤下载所需的包
 
-    - name: Cache build directory 🛠️
-      uses: actions/cache@v3
-      with:
-        path: |
-          openwrt/build_dir
-          openwrt/staging_dir
-          openwrt/scripts  # 确保缓存 scripts 目录
-        key: ${{ runner.os }}-openwrt-build-${{ hashFiles('**/feeds.conf.default') }}
-        restore-keys: |
-          ${{ runner.os }}-openwrt-build-
-      # 该步骤缓存 OpenWrt 编译的中间文件，避免每次都重新编译
-
     - name: Compile the firmware ⚙️
       id: compile
       run: |
@@ -120,6 +122,18 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
       # 该步骤用于编译固件，并生成最终的固件文件
+
+    - name: Cache build output 🗂️
+      uses: actions/cache@v3
+      with:
+        path: |
+          openwrt/dl
+          openwrt/build_dir
+          openwrt/staging_dir
+          openwrt/scripts
+        key: ${{ runner.os }}-openwrt-${{ github.run_id }}
+      id: cache-store
+      # 存储新的缓存，包括下载目录和构建目录
 
     - name: Check space usage 💾
       if: (!cancelled())
