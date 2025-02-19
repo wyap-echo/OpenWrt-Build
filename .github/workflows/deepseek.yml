@@ -191,10 +191,10 @@ jobs:
         compression-level: 9
         retention-days: 7
 
-    - name: Cleanup workflow runs 🗑️
-      if: always()
-      uses: GitRML/delete-workflow-runs@v2
+    - name: Delete workflow runs 🗑️
+      uses: GitRML/delete-workflow-runs@main
       with:
         retain_days: 1
+        keep_minimum_runs: 3
         keep_minimum_runs: 3
         token: ${{ secrets.GITHUB_TOKEN }}
