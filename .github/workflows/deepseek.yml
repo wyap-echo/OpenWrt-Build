@@ -28,6 +28,17 @@ jobs:
     - name: Checkout code 🛠️
       uses: actions/checkout@v4
 
+    - name: Initialization environment 🖥️
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo -E apt-get -qq update
+        sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.eu.org/init_build_environment.sh)'
+        sudo apt-get autoremove --purge -y && sudo apt-get clean
+        sudo timedatectl set-timezone "$TZ"
+        sudo mkdir -p /workdir && sudo chown $USER:$GROUPS /workdir
+        
     # 关键修复1：调整步骤顺序，先克隆代码再缓存
     - name: Clone source code 🧑💻
       id: clone_code
@@ -58,17 +69,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-build-
       id: cache-build
-
-    - name: Initialization environment 🖥️
-      env:
-        DEBIAN_FRONTEND: noninteractive
-      run: |
-        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
-        sudo -E apt-get -qq update
-        sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.eu.org/init_build_environment.sh)'
-        sudo apt-get autoremove --purge -y && sudo apt-get clean
-        sudo timedatectl set-timezone "$TZ"
-        sudo mkdir -p /workdir && sudo chown $USER:$GROUPS /workdir
 
     # 新增校验步骤
     - name: Validate source tree 🔍
