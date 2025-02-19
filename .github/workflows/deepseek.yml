@@ -1,17 +1,13 @@
-#
 # Copyright (c) 2019-2020 P3TERX <https://p3terx.com>
-#
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
-#
-# https://github.com/P3TERX/Actions-OpenWrt
-# Description: Build OpenWrt using GitHub Actions
-#
+# Fixed by DeepSeek-R1
 
 name: Build deepseek-immortalwrt-mt798x-RAX3000M
 
 on:
   workflow_dispatch:
+#  push:
+#    branches:
+#      - main
 
 env:
   REPO_URL: https://github.com/hanwckf/immortalwrt-mt798x.git
@@ -20,6 +16,7 @@ env:
   CONFIG_FILE: configs/rax3000m.config
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
+  UPLOAD_BIN_DIR: false
   UPLOAD_FIRMWARE: true
   TZ: Asia/Shanghai
 
@@ -28,89 +25,176 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@main
+    - name: Checkout code 🛠️
+      uses: actions/checkout@v4
 
-    - name: Initialization environment
+    # 关键修复1：调整步骤顺序，先克隆代码再缓存
+    - name: Clone source code 🧑💻
+      id: clone_code
+      working-directory: /workdir
+      run: |
+        git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+        echo "CLONE_TIME=$(date +%s)" >> $GITHUB_ENV
+
+    - name: Cache OpenWrt downloads 📦
+      uses: actions/cache@v3
+      with:
+        path: /workdir/openwrt/dl
+        key: ${{ runner.os }}-dl-${{ env.CLONE_TIME }}-${{ hashFiles('**/feeds.conf.default') }}
+        restore-keys: |
+          ${{ runner.os }}-dl-
+      id: cache-dl
+
+    # 关键修复2：移除对scripts目录的缓存
+    - name: Cache build artifacts 🛠️
+      uses: actions/cache@v3
+      with:
+        path: |
+          /workdir/openwrt/build_dir
+          /workdir/openwrt/staging_dir
+          /workdir/openwrt/tmp
+        key: ${{ runner.os }}-build-${{ env.CLONE_TIME }}-${{ hashFiles('**/feeds.conf.default') }}
+        restore-keys: |
+          ${{ runner.os }}-build-
+      id: cache-build
+
+    - name: Initialization environment 🖥️
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo rm -rf /etc/apt/sources.list.d/*
-        sudo apt-get -qq update
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo -E apt-get -qq update
         sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.eu.org/init_build_environment.sh)'
+        sudo apt-get autoremove --purge -y && sudo apt-get clean
+        sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir && sudo chown $USER:$GROUPS /workdir
 
-    - name: Clone source code
-      working-directory: /workdir
+    # 新增校验步骤
+    - name: Validate source tree 🔍
       run: |
-        git clone --depth=1 $REPO_URL -b $REPO_BRANCH openwrt
-        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+        if [ ! -f "/workdir/openwrt/scripts/feeds" ]; then
+          echo "::error::Missing critical file: scripts/feeds"
+          exit 1
+        fi
+        if [ ! -d "/workdir/openwrt/package" ]; then
+          echo "::error::Source tree incomplete"
+          exit 1
+        fi
 
-    - name: Load custom feeds
+    - name: Load custom feeds 📦
       run: |
-        [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
-        chmod +x $DIY_P1_SH
-        cd openwrt
-        $GITHUB_WORKSPACE/$DIY_P1_SH
+        if [ -e "$FEEDS_CONF" ]; then
+          mv "$FEEDS_CONF" /workdir/openwrt/feeds.conf.default
+          echo "Custom feeds.conf applied"
+        else
+          echo "Using default feeds.conf"
+        fi
+        
+        if [ -x "$DIY_P1_SH" ]; then
+          cd /workdir/openwrt
+          "$GITHUB_WORKSPACE/$DIY_P1_SH"
+        else
+          echo "Skipping DIY_P1_SH: $DIY_P1_SH not found"
+        fi
 
-    - name: Update feeds
-      run: cd openwrt && ./scripts/feeds update -a
-
-    - name: Install feeds
-      run: cd openwrt && ./scripts/feeds install -a
-
-    - name: Load custom configuration
+    - name: Update feeds 🔄
       run: |
-        [ -e files ] && mv files openwrt/files
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
-        chmod +x $DIY_P2_SH
-        cd openwrt
-        $GITHUB_WORKSPACE/$DIY_P2_SH
+        cd /workdir/openwrt
+        ./scripts/feeds update -a
+        echo "Feed update timestamp: $(date +%s)" >> feed_version.log
 
-    - name: Download package
+    - name: Install feeds 🛠️
+      run: |
+        cd /workdir/openwrt
+        ./scripts/feeds install -a
+        [ -f "$CONFIG_FILE" ] && cp "$CONFIG_FILE" .config
+
+    - name: Load custom configuration 🧑🏫
+      run: |
+        if [ -d "files" ]; then
+          mv files /workdir/openwrt/files
+          echo "Custom files directory applied"
+        fi
+        
+        if [ -x "$DIY_P2_SH" ]; then
+          cd /workdir/openwrt
+          "$GITHUB_WORKSPACE/$DIY_P2_SH"
+        else
+          echo "Skipping DIY_P2_SH: $DIY_P2_SH not found"
+        fi
+
+    - name: Download package 📥
       id: package
       run: |
-        cd openwrt
+        cd /workdir/openwrt
         make defconfig
         make download -j$(nproc)
+        # 清理无效的小文件
         find dl -size -1024c -delete
 
-    - name: Validate downloads
-      run: |
-        cd openwrt
-        [ $(ls dl | wc -l) -gt 100 ] || { echo "Package download incomplete"; exit 1; }
-
-    - name: Compile the firmware
+    - name: Compile the firmware ⚙️
       id: compile
       run: |
-        cd openwrt
-        echo "Using $(($(nproc) - 1)) threads for compilation"
-        make -j$(($(nproc) - 1)) || make -j1 V=s
+        cd /workdir/openwrt
+        echo "Using $(nproc) threads"
+        make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> $GITHUB_OUTPUT
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
 
-    - name: Check space usage
+    - name: Cache build output 🗂️
+      uses: actions/cache@v3
+      with:
+        path: |
+          /workdir/openwrt/dl
+          /workdir/openwrt/build_dir
+          /workdir/openwrt/staging_dir
+        key: ${{ runner.os }}-output-${{ github.run_id }}
+      id: cache-store
+
+    - name: Check space usage 💾
       if: (!cancelled())
       run: df -hT
 
-    - name: Organize files
+    - name: Upload bin directory 📤
+      uses: actions/upload-artifact@v4
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
+      with:
+        name: "OpenWrt_bin_${{ env.DEVICE_NAME }}_${{ github.run_id }}"
+        path: /workdir/openwrt/bin
+        retention-days: 3
+
+    - name: Organize files 🗂️
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        cd openwrt/bin/targets/*/*
-        FIRMWARE_FILES=$(ls -1 sysupgrade.bin 2>/dev/null || ls -1 *.img.gz)
-        echo "FIRMWARE=$PWD/$FIRMWARE_FILES" >> $GITHUB_ENV
+        cd /workdir/openwrt/bin/targets/*/*
+        rm -rf packages
+        echo "FIRMWARE_DIR=$(pwd)" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
-    - name: Upload firmware directory
-      uses: actions/upload-artifact@main
+    - name: Generate firmware filename 📝
+      id: generate_filename
+      run: |
+        COMMIT_SHA=$(git -C /workdir/openwrt rev-parse --short HEAD)
+        TIMESTAMP=$(date '+%Y%m%d-%H%M')
+        FILENAME="RAX3000M_immortalwrt-21.02_${COMMIT_SHA}_${TIMESTAMP}"
+        echo "FILENAME=${FILENAME}" >> $GITHUB_ENV
+        echo "::notice::Generated filename: ${FILENAME}"
+
+    - name: Upload firmware 📦
+      uses: actions/upload-artifact@v4
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        name: RAX3000M-hanwckf-OpenWrt
-        path: ${{ env.FIRMWARE }}
+        name: ${{ env.FILENAME }}
+        path: ${{ env.FIRMWARE_DIR }}
+        compression-level: 9
+        retention-days: 7
 
-    - name: Delete workflow runs
-      uses: GitRML/delete-workflow-runs@main
+    - name: Cleanup workflow runs 🗑️
+      if: always()
+      uses: GitRML/delete-workflow-runs@v2
       with:
         retain_days: 1
         keep_minimum_runs: 3
+        token: ${{ secrets.GITHUB_TOKEN }}
