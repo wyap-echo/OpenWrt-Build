@@ -35,48 +35,38 @@ jobs:
     - name: Checkout
       uses: actions/checkout@main
 
-    - name: Initialization environment
+    - name: Initialization environment 🖥️
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
         sudo -E apt-get -qq update
         sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.eu.org/init_build_environment.sh)'
-        sudo -E apt-get -qq autoremove --purge
-        sudo -E apt-get -qq clean
+        sudo apt-get autoremove --purge -y && sudo apt-get clean
         sudo timedatectl set-timezone "$TZ"
-        sudo mkdir -p /workdir
-        sudo chown $USER:$GROUPS /workdir
+        sudo mkdir -p /workdir && sudo chown $USER:$GROUPS /workdir
 
-
-    - name: Clone source code
+    - name: Clone source code 🧑‍💻
       working-directory: /workdir
       run: |
         df -hT $PWD
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    - name: Load custom feeds
+    - name: Load custom feeds 📦
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P1_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH
 
-    - name: Update feeds
+    - name: Update feeds 🔄
       run: cd openwrt && ./scripts/feeds update -a
 
-    - name: Install feeds
+    - name: Install feeds 🛠️
       run: cd openwrt && ./scripts/feeds install -a
-      
- #   - name: Replace Upnp
- #     run: |
- #         cd openwrt
- #         rm -rf feeds/packages/net/miniupnpd
- #         svn co https://github.com/immortalwrt/packages/branches/openwrt-18.06/net/miniupnpd feeds/packages/net/miniupnpd
- #         git clone -b js --single-branch https://github.com/gngpp/luci-theme-design.git  package/luci-theme-design
 
-    - name: Load custom configuration
+    - name: Load custom configuration 🧑‍🏫
       run: |
         [ -e files ] && mv files openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
@@ -84,7 +74,7 @@ jobs:
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
-    - name: Download package
+    - name: Download package 📥
       id: package
       run: |
         cd openwrt
@@ -93,7 +83,7 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
-    - name: Compile the firmware
+    - name: Compile the firmware ⚙️
       id: compile
       run: |
         cd openwrt
@@ -102,18 +92,18 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
 
-    - name: Check space usage
+    - name: Check space usage 💾
       if: (!cancelled())
       run: df -hT
 
-    - name: Upload bin directory
+    - name: Upload bin directory 📤
       uses: actions/upload-artifact@main
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
         name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: openwrt/bin
 
-    - name: Organize files
+    - name: Organize files 🗂️
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
@@ -122,14 +112,28 @@ jobs:
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
-    - name: Upload firmware directory
+    - name: Generate firmware filename 📝
+      id: generate_filename
+      run: |
+        # 使用固定的版本号
+        VERSION="immortalwrt-21.02"
+        # 获取当前日期并格式化为 YYYYMMDD
+        TIMESTAMP=$(date '+%Y%m%d')
+        # 生成完整的文件名
+        FILENAME="RAX3000M_mediatek_mt7981_${VERSION}-${{ github.run_id }}-${TIMESTAMP}"
+        echo "Generated firmware filename: $FILENAME"
+        echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+        # 该步骤生成固件文件名，使用固定的版本号
+
+    - name: Upload firmware directory 📦
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        name: RAX3000M-hanwckf-OpenWrt
+        name: ${{ env.FILENAME }}
         path: ${{ env.FIRMWARE }}
+      # 该步骤上传生成的固件文件，文件名由前一步动态生成
 
-    - name: Delete workflow runs
+    - name: Delete workflow runs 🗑️
       uses: GitRML/delete-workflow-runs@main
       with:
         retain_days: 1
