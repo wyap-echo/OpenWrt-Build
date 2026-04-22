@@ -8,9 +8,9 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: Build immortalwrt-mt798x-RAX3000M
+name: Build immortalwrt-mt798x-RuijieX60
 
-于:
+on:
   workflow_dispatch:
 #  push:
 #    branches:
@@ -66,16 +66,17 @@ jobs:
     - name: Install feeds 🛠️
       run: cd openwrt && ./scripts/feeds install -a
 
-    - name: Update Argon Theme
-        run: |
-          # 1. 彻底移除现有版本（防止软链接冲突）
-          rm -rf feeds/luci/themes/luci-theme-argon
-          rm -rf feeds/luci/applications/luci-app-argon-config
-          rm -rf package/feeds/luci/luci-theme-argon
-          rm -rf package/feeds/luci/luci-app-argon-config
-          # 2. 克隆最新源码到 package 目录（这样优先级最高）
-          git clone https://github.com/jerrykuku/luci-theme-argon.git package/luci-theme-argon
-          git clone https://github.com/jerrykuku/luci-app-argon-config.git package/luci-app-argon-config
+    - name: Update Argon Theme 🎨
+      run: |
+        cd openwrt
+        # 彻底移除现有版本防止冲突
+        rm -rf feeds/luci/themes/luci-theme-argon
+        rm -rf feeds/luci/applications/luci-app-argon-config
+        rm -rf package/feeds/luci/luci-theme-argon
+        rm -rf package/feeds/luci/luci-app-argon-config
+        # 克隆最新 master 分支源码到 package 目录
+        git clone https://github.com/jerrykuku/luci-theme-argon.git package/luci-theme-argon
+        git clone https://github.com/jerrykuku/luci-app-argon-config.git package/luci-app-argon-config
 
     - name: Load custom configuration 🧑‍🏫
       run: |
@@ -126,15 +127,12 @@ jobs:
     - name: Generate firmware filename 📝
       id: generate_filename
       run: |
-        # 使用固定的版本号
         VERSION="immortalwrt-21.02"
-        # 获取当前日期并格式化为 YYYYMMDD
         TIMESTAMP=$(date '+%Y%m%d')
-        # 生成完整的文件名
-        FILENAME="RAX3000M_mediatek_mt7981_${VERSION}-${{ github.run_id }}-${TIMESTAMP}"
+        # 修改为符合 Ruijie X60 的命名
+        FILENAME="Ruijie_X60_mt7986_${VERSION}-${{ github.run_id }}-${TIMESTAMP}"
         echo "Generated firmware filename: $FILENAME"
         echo "FILENAME=$FILENAME" >> $GITHUB_ENV
-        # 该步骤生成固件文件名，使用固定的版本号
 
     - name: Upload firmware directory 📦
       uses: actions/upload-artifact@main
@@ -142,7 +140,6 @@ jobs:
       with:
         name: ${{ env.FILENAME }}
         path: ${{ env.FIRMWARE }}
-      # 该步骤上传生成的固件文件，文件名由前一步动态生成
 
     - name: Delete workflow runs 🗑️
       uses: GitRML/delete-workflow-runs@main
