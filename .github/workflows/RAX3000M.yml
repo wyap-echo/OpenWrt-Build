@@ -17,10 +17,10 @@ on:
 #      - main
 
 env:
-  REPO_URL: https://github.com/hanwckf/immortalwrt-mt798x.git
+  REPO_URL: https://github.com/Yuzhii0718/immortalwrt-mt798x-hanwckf.git
   REPO_BRANCH: openwrt-21.02
   FEEDS_CONF: feeds.conf.default
-  CONFIG_FILE: configs/rax3000m.config
+  CONFIG_FILE: configs/NEW-rax3000m.config
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
   UPLOAD_BIN_DIR: true
