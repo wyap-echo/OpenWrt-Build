@@ -64,20 +64,20 @@ jobs:
       run: cd openwrt && ./scripts/feeds install -a
 
     # 新增步骤：在移动 files 文件夹之前，替换其中的敏感信息
-    - name: Inject Sensitive Data 🔐
-      env:
-        PPPOE_USER: ${{ secrets.MY_PPPOE_USER }}
-        PPPOE_PASS: ${{ secrets.MY_PPPOE_PASS }}
-      run: |
-        NETWORK_FILE="files/etc/config/network"
-        if [ -f "$NETWORK_FILE" ]; then
-          echo "Injecting secrets into $NETWORK_FILE..."
-          # 使用 | 作为分隔符，防止密码中包含 / 导致脚本崩溃
-          sed -i "s|PPPOE_USER|$PPPOE_USER|g" "$NETWORK_FILE"
-          sed -i "s|PPPOE_PASS|$PPPOE_PASS|g" "$NETWORK_FILE"
-        else
-          echo "Warning: $NETWORK_FILE not found, skipping injection."
-        fi
+    # - name: Inject Sensitive Data 🔐
+    #   env:
+    #     PPPOE_USER: ${{ secrets.MY_PPPOE_USER }}
+    #     PPPOE_PASS: ${{ secrets.MY_PPPOE_PASS }}
+    #   run: |
+    #     NETWORK_FILE="files/etc/config/network"
+    #     if [ -f "$NETWORK_FILE" ]; then
+    #       echo "Injecting secrets into $NETWORK_FILE..."
+    #       # 使用 | 作为分隔符，防止密码中包含 / 导致脚本崩溃
+    #       sed -i "s|PPPOE_USER|$PPPOE_USER|g" "$NETWORK_FILE"
+    #       sed -i "s|PPPOE_PASS|$PPPOE_PASS|g" "$NETWORK_FILE"
+    #     else
+    #       echo "Warning: $NETWORK_FILE not found, skipping injection."
+    #     fi
 
     - name: Load custom configuration 🧑‍🏫
       run: |
